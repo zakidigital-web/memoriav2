@@ -12,58 +12,9 @@ function vercelApiDev(): Plugin {
   const resolveHandler = (pathname: string): { moduleId: string; query: Record<string, string> } | null => {
     const clean = pathname.replace(/\/+$/, "");
     if (!clean.startsWith("/api")) return null;
-    const rest = clean.slice("/api".length).replace(/^\/+/, "");
-    const parts = rest.split("/").filter(Boolean);
-
-    const query: Record<string, string> = {};
-
-    if (parts.length === 0) return null;
-
-    if (parts[0] === "health" && parts.length === 1) return { moduleId: "/api/health.ts", query };
-    if (parts[0] === "bootstrap" && parts.length === 1) return { moduleId: "/api/bootstrap.ts", query };
-    if (parts[0] === "school" && parts.length === 1) return { moduleId: "/api/school.ts", query };
-    if (parts[0] === "settings" && parts.length === 1) return { moduleId: "/api/settings.ts", query };
-
-    if (parts[0] === "auth") {
-      if (parts[1] === "me" && parts.length === 2) return { moduleId: "/api/auth/me.ts", query };
-      if (parts[1] === "login" && parts.length === 2) return { moduleId: "/api/auth/login.ts", query };
-      if (parts[1] === "logout" && parts.length === 2) return { moduleId: "/api/auth/logout.ts", query };
-      if (parts[1] === "setup" && parts.length === 2) return { moduleId: "/api/auth/setup.ts", query };
-    }
-
-    if (parts[0] === "user") {
-      if (parts[1] === "preferences" && parts.length === 2) return { moduleId: "/api/user/preferences.ts", query };
-    }
-
-    if (parts[0] === "blob") {
-      if (parts[1] === "upload" && parts.length === 2) return { moduleId: "/api/blob/upload.ts", query };
-    }
-
-    if (parts[0] === "teachers") {
-      if (parts.length === 1) return { moduleId: "/api/teachers/index.ts", query };
-      if (parts.length === 2) {
-        query.id = parts[1];
-        return { moduleId: "/api/teachers/[id].ts", query };
-      }
-    }
-
-    if (parts[0] === "alumni") {
-      if (parts.length === 1) return { moduleId: "/api/alumni/index.ts", query };
-      if (parts.length === 2) {
-        query.id = parts[1];
-        return { moduleId: "/api/alumni/[id].ts", query };
-      }
-    }
-
-    if (parts[0] === "yearbooks") {
-      if (parts.length === 1) return { moduleId: "/api/yearbooks/index.ts", query };
-      if (parts.length === 2) {
-        query.id = parts[1];
-        return { moduleId: "/api/yearbooks/[id].ts", query };
-      }
-    }
-
-    return null;
+    
+    // In dev mode, route everything under /api to our single index.ts router
+    return { moduleId: "/api/index.ts", query: {} };
   };
 
   const readBody = async (req: any) => {
