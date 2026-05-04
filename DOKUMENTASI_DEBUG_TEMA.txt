@@ -1,0 +1,50 @@
+RINGKASAN DEBUG TEMA MEMORIA
+Tanggal: 2026-05-04
+
+1. Gejala Utama
+- Pengaturan "Tema Default Aplikasi" di admin ikut mengubah preferensi tema user yang sedang login.
+- User tidak memiliki cara untuk kembali ke mode sistem setelah toggle mengubah tema menjadi eksplisit light/dark.
+- Pengunjung baru tanpa preferensi lokal tidak selalu mengikuti default tema sekolah pada render awal berikutnya.
+- Pada environment lokal tanpa `.env`, aplikasi sempat berisiko blank karena client Supabase melempar error saat import sebelum React sempat render fallback.
+
+2. Akar Masalah
+- Tailwind v4 secara default menggunakan `prefers-color-scheme` (media query) untuk dark mode. Karena itu, penambahan class `.dark` via DOM manipulation tidak mengubah style Tailwind apapun, membuat UI terlihat tidak berganti tema.
+- Context tema memakai state internal yang mendukung "system", tetapi API publiknya hanya mengekspose operasi biner light/dark.
+- Halaman `src/pages/AdminSettings.tsx` memanggil `setTheme()` saat admin hanya ingin mengubah default sekolah.
+- Endpoint `api/user/preferences.ts` mengembalikan `"system"` saat preferensi user belum ada, sehingga client tidak bisa membedakan "tidak ada preferensi" vs "user memang memilih system".
+- Bootstrap awal di `index.html` hanya membaca preferensi user/legacy, belum memakai cache default tema sekolah.
+- Operasi localStorage berisiko menyebabkan runtime error bila environment menolak akses (seperti incognito).
+
+3. Perbaikan
+- Menambahkan `@custom-variant dark (&:is(.dark, .dark *));` di `src/index.css` agar Tailwind v4 kembali menggunakan class `.dark` sebagai pemicu dark mode alih-alih `prefers-color-scheme` murni.
+- Menambahkan proteksi `try/catch` pada setiap operasi write/read di localStorage (`src/lib/theme.ts`) untuk mencegah pecah runtime.
+- Menambahkan helper terpusat di `src/lib/theme.ts` untuk:
+  - membaca preferensi user,
+  - membaca cache default sekolah,
+  - menggabungkan preferensi lokal dan remote,
+  - meresolusikan tema final,
+  - menerapkan tema ke root document.
+- Memisahkan `themePreference` user dari `schoolDefaultTheme` di `src/context.tsx`.
+- Menambahkan `themeMode` dan `setThemeMode()` ke context agar mode `system` bisa dipulihkan tanpa mengganggu default sekolah.
+- Mengubah `AdminSettings` agar pengaturan default tema hanya mengubah `localSchool.defaultTheme`.
+- Mengubah bootstrap `index.html` agar memakai cache `memoria_school_theme_default`.
+- Menambahkan preload awal di `src/lib/bootstrap.ts` dan `src/main.tsx` agar first-visit ikut mengambil `defaultTheme` sekolah sebelum React dirender.
+- Mengubah API preferensi user agar mengembalikan `null` bila preferensi belum ada.
+- Mengubah `src/supabaseClient.ts` agar fallback secara aman ketika env frontend Supabase belum tersedia, sehingga public app tetap bisa render dan tidak blank.
+
+4. Pengujian
+- Unit test ditambahkan di `test/theme.test.ts` untuk:
+  - pembacaan preference,
+  - fallback default sekolah,
+  - resolusi mode system,
+  - merge preferensi lokal/remote,
+  - apply tema ke root document.
+- Integration-style test ditambahkan di `test/bootstrap.test.ts` untuk preload bootstrap awal dan proteksi terhadap override preferensi user eksplisit.
+- Validasi lanjutan yang perlu dijalankan:
+  - `npm test`
+  - `npm run typecheck`
+  - smoke test UI publik dan admin pada mode light, dark, dan system.
+
+5. Risiko Residual
+- Jika `/api/bootstrap` lambat atau gagal pada preload awal, aplikasi tetap fallback ke bootstrap lokal + preferensi sistem agar tidak memblokir render terlalu lama.
+- Untuk pengalaman tanpa network dependency sama sekali pada first paint, default theme tetap idealnya diinjeksi langsung dari server ke HTML awal.

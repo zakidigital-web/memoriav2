@@ -1,0 +1,201 @@
+DOKUMENTASI TEKNIS — TEMA (DARK/LIGHT), SUPABASE, DAN DEPLOYMENT VERCEL
+Proyek: Memoria (Buku Kenangan SMP)
+Tanggal: 2026-05-02
+
+
+1) Ringkasan Implementasi Tema
+1.1 Fitur yang didukung
+- Toggle switch responsif (desktop & mobile) pada layout publik dan admin.
+- Penyimpanan preferensi tema di localStorage:
+  - memoria_theme_mode: "system" | "light" | "dark"
+  - memoria_theme: "light" | "dark" (hasil resolusi untuk kompatibilitas/migrasi)
+- Deteksi preferensi sistem otomatis ketika memoria_theme_mode = "system" menggunakan prefers-color-scheme.
+- Transisi smooth saat pergantian tema menggunakan class html.theme-transition (200ms) agar tidak membebani seluruh DOM secara permanen.
+- Konsistensi dark/light di komponen inti (navbar, sidebar, card, form, typography) via kombinasi kelas Tailwind dark:.
+
+1.2 File yang relevan
+- Bootstrap tema sebelum React load (mengurangi “white flash”):
+  - index.html
+- Aturan transisi tema:
+  - src/index.css
+- Logika tema (system detect + persist):
+  - src/context.tsx
+- Toggle UI:
+  - src/components/Layout.tsx
+  - src/components/AdminLayout.tsx
+
+
+2) Setup Environment Lokal
+2.1 Prasyarat
+- Node.js + npm (versi modern)
+- Akses ke project Supabase (URL, anon key, dan database connection string)
+- Vercel Blob store (BLOB_READ_WRITE_TOKEN) untuk fitur upload PDF
+
+2.2 Environment variables (lokal)
+Proyek ini tidak membuat file .env otomatis. Set environment via shell/CI sesuai kebutuhan:
+
+FRONTEND (Vite):
+- VITE_SUPABASE_URL
+- VITE_SUPABASE_ANON_KEY
+
+BACKEND (Vercel Serverless Functions /api):
+- DATABASE_URL
+  - Gunakan Supabase Pooler connection string (direkomendasikan untuk serverless).
+- SUPABASE_URL
+- SUPABASE_ANON_KEY
+- BLOB_READ_WRITE_TOKEN
+- (opsional) YEARBOOK_MAX_PDF_BYTES, YEARBOOK_MAX_PAGE_IMAGE_BYTES, YEARBOOK_MAX_PAGES
+
+2.3 Menjalankan lokal
+- Install:
+  - npm install
+- Typecheck:
+  - npm run typecheck
+- Test:
+  - npm test
+- Build:
+  - npm run build
+- Preview:
+  - npm run preview
+
+Catatan:
+- Karena ini Vite SPA + Vercel Functions, endpoint /api secara full akan berjalan ketika deploy ke Vercel.
+
+
+3) Struktur Database di Supabase
+3.1 Skema SQL
+- Gunakan file:
+  - db/schema.sql
+
+Tabel tambahan untuk tema & admin:
+- admins
+  - user_id UUID PK -> auth.users(id)
+  - digunakan untuk menentukan user yang boleh mengakses /admin
+- user_preferences
+  - user_id UUID PK -> auth.users(id)
+  - theme_mode TEXT (system/light/dark)
+  - RLS + policy agar user hanya bisa akses row miliknya
+
+3.2 Setup admin
+Alur yang digunakan:
+- Buat user di Supabase Auth (email/password) via dashboard atau signup flow Supabase.
+- Setelah user dibuat, masukkan ke tabel admins:
+  - INSERT INTO admins (user_id) VALUES ('<auth.users.id>');
+
+
+4) Authentication Flow (Supabase)
+4.1 Frontend
+- Login memakai Supabase Auth (email/password) dari client:
+  - src/supabaseClient.ts
+  - src/pages/Login.tsx
+- Session disimpan oleh Supabase client (persistSession=true) dan access_token dipakai untuk memanggil /api (Authorization: Bearer <token>).
+
+4.2 Backend (Serverless)
+- /api/auth/me memverifikasi Bearer token dengan Supabase Auth endpoint:
+  - api/auth/me.ts
+- Endpoint admin memerlukan status admin (cek tabel admins) menggunakan:
+  - api/_lib/auth.ts (requireAdmin)
+
+
+5) Penyimpanan Preferensi Tema ke Database
+5.1 Endpoint
+- GET /api/user/preferences
+- PUT /api/user/preferences
+File:
+- api/user/preferences.ts
+
+5.2 Sinkronisasi
+- Saat user login, aplikasi mengambil themeMode dari database lalu menerapkan tema.
+- Saat user mengubah tema (toggle), preferensi disimpan ke:
+  - localStorage (memoria_theme_mode)
+  - database (user_preferences.theme_mode) jika user sedang login
+
+
+6) Upload PDF (Vercel Blob) + Metadata DB
+6.1 Validasi
+- Validasi tipe file: hanya application/pdf (client-side).
+- Batas ukuran: default 30MB (client-side dan server token generator).
+- Batas halaman: default 50.
+
+6.2 Proses upload
+- Client mengunggah PDF dan halaman hasil konversi ke Vercel Blob via client uploads.
+- Request token upload memakai:
+  - POST /api/blob/upload
+  - Header: Authorization: Bearer <supabase_access_token>
+- Metadata disimpan ke DB:
+  - yearbooks + yearbook_pages
+
+File terkait:
+- src/pages/AdminFlipbook.tsx
+- api/blob/upload.ts
+- api/yearbooks/index.ts
+
+
+7) Deployment ke Vercel (Checklist)
+7.1 Build settings
+- Framework preset: Vite
+- Build command: npm run build
+- Output directory: dist
+- Serverless Functions: api/**/*.ts
+- SPA routing: sudah diatur pada vercel.json
+
+File:
+- vercel.json
+
+7.2 Environment variables di Vercel (Project Settings)
+Tambahkan (Secrets):
+- DATABASE_URL (Supabase Pooler URL)
+- SUPABASE_URL
+- SUPABASE_ANON_KEY
+- BLOB_READ_WRITE_TOKEN
+Tambahkan (opsional):
+- YEARBOOK_MAX_PDF_BYTES
+- YEARBOOK_MAX_PAGE_IMAGE_BYTES
+- YEARBOOK_MAX_PAGES
+Tambahkan (Frontend):
+- VITE_SUPABASE_URL
+- VITE_SUPABASE_ANON_KEY
+
+7.3 Domain setup
+- Tambahkan domain di Vercel Project -> Domains
+- Pastikan DNS record (A/CNAME) sesuai instruksi Vercel
+- Pastikan HTTPS aktif (otomatis oleh Vercel setelah DNS benar)
+
+
+8) Testing Cross-Browser & Cross-Device (Checklist)
+Catatan: pengujian otomatis penuh untuk Safari iOS memerlukan perangkat/CI khusus; lakukan manual QA menggunakan checklist ini.
+
+8.1 Browser desktop
+- Chrome:
+  - Toggle tema (light <-> dark), refresh, pastikan preferensi tersimpan.
+  - Set OS theme (light/dark) lalu mode = system, pastikan auto berubah.
+- Firefox:
+  - Cek transisi theme-transition (200ms) tidak glitch.
+- Edge:
+  - Cek warna pada sidebar/admin cards (kontras teks).
+- Safari macOS:
+  - Cek prefers-color-scheme dan transisi, serta rendering scrollbar.
+
+8.2 Mobile/Tablet
+- iOS Safari:
+  - Mode system mengikuti setting iOS.
+  - Toggle tema dari UI tetap konsisten setelah reload.
+- Android Chrome:
+  - Cek navbar bottom, card, dan form input di dark mode.
+
+8.3 Area yang harus dicek (kontras & konsistensi)
+- Navbar publik (Layout) + toggle
+- Sidebar admin (AdminLayout) + toggle
+- Cards: list yearbook/guru/alumni
+- Buttons: primary (bg-blue-600), destructive (red), secondary
+- Forms: input, select, textarea, placeholder color
+- Typography: heading, body, muted text
+
+
+9) Referensi Implementasi (File Penting)
+- Tema: src/context.tsx, src/index.css, index.html
+- Auth: src/supabaseClient.ts, api/_lib/auth.ts, api/auth/me.ts
+- Preferensi user: api/user/preferences.ts, db/schema.sql
+- Upload: src/pages/AdminFlipbook.tsx, api/blob/upload.ts
+- Vercel: vercel.json
+

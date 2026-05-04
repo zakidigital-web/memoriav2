@@ -1,0 +1,244 @@
+REVIEW KOMPREHENSIF APLIKASI “MEMORIA” (BUKU KENANGAN SMP)
+Tanggal: 2026-05-02
+Lokasi proyek: d:\CODEBASE\Buku Kenangan SMP
+
+
+1) Ringkasan Eksekutif
+- Aplikasi ini adalah Single Page Application (SPA) berbasis React + TypeScript yang dibangun dengan Vite dan Tailwind CSS v4.
+- Fungsi utama: publik dapat melihat koleksi buku tahunan digital (flipbook), profil sekolah, direktori guru, serta (opsional) data angkatan/alumni. Admin dapat mengelola konten melalui panel admin.
+- “Backend” saat ini tidak ada: seluruh data (yearbook/teachers/alumni/school/settings) disimpan di localStorage browser dan diinisialisasi dari mock data.
+- Status autentikasi admin juga berbasis localStorage dan kredensial hardcoded; secara keamanan ini hanya cocok untuk demo/offline kiosk, belum layak untuk produksi.
+
+
+2) Struktur Repository
+- Root:
+  - index.html: entry HTML Vite.
+  - vite.config.ts: konfigurasi Vite + Tailwind + plugin single-file build.
+  - package.json / package-lock.json: dependensi & script.
+  - src/: seluruh kode aplikasi.
+
+- src/:
+  - main.tsx: bootstrap React root.
+  - App.tsx: definisi routing publik & admin, guard admin.
+  - context.tsx: state management global + persistence localStorage.
+  - types.ts: definisi tipe domain + mock data.
+  - index.css: Tailwind v4 (@import “tailwindcss”) + theme variables.
+  - components/:
+    - Layout.tsx: layout publik (header + bottom nav mobile).
+    - AdminLayout.tsx: layout admin (sidebar + topbar).
+  - pages/: halaman publik & admin (routing ada di App.tsx).
+  - utils/cn.ts: helper className (clsx + tailwind-merge).
+
+
+3) Arsitektur Sistem
+3.1 Gambaran Umum
+- Pola: Client-side rendered SPA (React Router).
+- Lapisan:
+  - UI Layer: komponen halaman (src/pages/*) dan layout (src/components/*).
+  - State Layer: React Context (src/context.tsx) sebagai “in-memory store” + persistence localStorage.
+  - Data Source: mock data (src/types.ts) dan localStorage (memoria_* keys).
+- Build & delivery: Vite build menghasilkan dist/index.html (di-inline menjadi 1 file oleh vite-plugin-singlefile).
+
+3.2 Routing dan Akses
+- Routing publik & admin didefinisikan di src/App.tsx.
+- Admin guard: ProtectedRoute mengecek isAdmin dari context, jika false redirect ke /login.
+  - Catatan penting: isAdmin berasal dari localStorage, sehingga bisa diubah manual oleh user (bypass).
+
+Referensi kode:
+- App routing: src/App.tsx
+- State & persistence: src/context.tsx
+
+
+4) Teknologi yang Digunakan
+- Frontend: React 19 + TypeScript.
+- Routing: react-router-dom.
+- UI icon: lucide-react.
+- Styling: Tailwind CSS v4 + Tailwind Vite plugin (@tailwindcss/vite).
+- Flipbook viewer: react-pageflip (HTMLFlipBook).
+- PDF processing (admin upload): pdfjs-dist.
+- File input/drag-drop: react-dropzone.
+- Excel import/export: xlsx (SheetJS).
+- Build tool: Vite.
+- Build output bundling: vite-plugin-singlefile (meng-inline JS/CSS ke 1 HTML).
+
+
+5) Alur Kerja Utama (User Journeys)
+5.1 Pengunjung (Publik)
+- Beranda (/): menampilkan carousel koleksi yearbook dan menu cepat (Profil Sekolah, Direktori Guru, Angkatan).
+- Koleksi (/koleksi): filter & search koleksi, masuk ke viewer /buku/:id.
+- Viewer (/buku/:id):
+  - Flipbook interaktif (next/prev, slider, TOC modal, zoom, fullscreen).
+  - Share: Web Share API jika tersedia, fallback copy clipboard.
+  - Background music jika yearbook memiliki URL audio.
+- Profil Sekolah (/sekolah): menampilkan logo, sejarah, visi/misi, fasilitas.
+- Direktori Guru (/guru): filter kategori + search nama/jabatan.
+- Angkatan (/angkatan) & hirarki (/angkatan/:year, /angkatan/:year/:className):
+  - Menampilkan tahun → kelas → siswa (modal profil siswa).
+  - Fitur ini dapat dimatikan dari pengaturan admin (isAlumniVisible).
+- Global Search (/cari): pencarian lintas yearbook + alumni.
+
+5.2 Admin
+- Login (/login):
+  - Validasi sangat sederhana (username/password hardcoded) lalu set localStorage memoria_isAdmin.
+  - UI menampilkan kredensial default di halaman login.
+- Dashboard (/admin): ringkasan & tautan ke modul.
+- Modul admin:
+  - Data sekolah: /admin/sekolah (edit profil).
+  - Direktori guru: /admin/guru (CRUD).
+  - Alumni: /admin/alumni (CRUD + import/export XLSX).
+  - Upload flipbook: /admin/flipbook (PDF → gambar, tambah yearbook).
+  - Manajemen album: /admin/manage-books (edit metadata, delete album).
+  - Pengaturan: /admin/settings (warna, tema default, toggle alumni, dsb).
+
+
+6) Model Data & Penyimpanan
+6.1 Tipe Domain
+- Alumni: id, name, ttl, message, photo, socialMedia, graduationYear, class.
+- Teacher: id, name, position, message, photo, category.
+- Yearbook: id, year, title, coverImage, totalStudents, totalClasses, pages[], backgroundMusic?.
+
+Referensi: src/types.ts
+
+6.2 Persistence localStorage
+- Alumni: memoria_alumni
+- Teachers: memoria_teachers
+- Yearbooks: memoria_yearbooks
+- School info: memoria_school
+- Theme: memoria_theme
+- Primary color: memoria_primary_color
+- Toggle alumni visibility: memoria_alumni_visible
+- Yearbook settings: memoria_yearbook_settings
+- Admin session flag: memoria_isAdmin
+
+Catatan:
+- localStorage memiliki limit ukuran (umumnya ~5MB per origin). Penyimpanan dataURL gambar hasil konversi PDF sangat cepat menabrak limit ini.
+- Tidak ada try/catch saat menulis localStorage; jika quota penuh, aplikasi berpotensi crash saat setItem.
+
+
+7) Dependensi Eksternal
+7.1 Dependensi NPM (runtime)
+- react, react-dom, react-router-dom
+- lucide-react
+- react-pageflip
+- react-dropzone
+- pdfjs-dist
+- xlsx
+- clsx, tailwind-merge, framer-motion (terdeteksi dalam lock; tidak terlihat dipakai di src saat review ini)
+
+7.2 Panggilan jaringan eksternal (runtime)
+- Worker PDF.js mengambil script dari CDN:
+  - https://unpkg.com/pdfjs-dist@<versi>/build/pdf.worker.min.js
+- Mock images:
+  - Unsplash (https://images.unsplash.com/...)
+  - Logo default sekolah:
+    - https://upload.wikimedia.org/... (di environment preview sempat terblokir ORB)
+
+
+8) Konfigurasi yang Diperlukan & Cara Menjalankan
+8.1 Prasyarat
+- Node.js: teruji dengan Node v24.14.0 dan npm v11.9.0 pada environment review ini.
+- Tidak ada .env atau konfigurasi backend.
+
+8.2 Perintah yang digunakan (hasil eksekusi berhasil)
+- Instal:
+  - npm ci
+- Build production:
+  - npm run build
+- Jalankan preview:
+  - npm run preview -- --host 0.0.0.0 --port 4173
+
+Catatan penting:
+- Sebelum eksekusi, package.json perlu diselaraskan dengan struktur proyek (Vite SPA). Pada workspace ini sudah dilakukan penyesuaian agar sesuai dengan package-lock dan konfigurasi Vite.
+
+
+9) Hasil Pengujian Fungsionalitas (Smoke Test)
+9.1 Build
+- Status: BERHASIL
+- Output: dist/index.html singlefile (inline JS/CSS)
+- Ukuran: 1,364.24 kB (gzip 410.95 kB) dari log build.
+
+9.2 Preview runtime
+- Status server: BERHASIL berjalan pada http://localhost:4173/
+- Observasi error browser:
+  - net::ERR_BLOCKED_BY_ORB untuk logo sekolah default dari upload.wikimedia.org
+    Dampak: logo tidak tampil pada beberapa environment/browser yang menerapkan ORB ketat.
+
+9.3 Catatan validasi fitur (berdasarkan inspeksi kode)
+- Routing: jalur publik & admin terdefinisi dengan baik.
+- CRUD admin: dilakukan via Context + localStorage, bukan API.
+- Viewer flipbook: fitur dasar tersedia (paging, zoom, fullscreen, TOC, share).
+
+
+10) Performa
+- Build menggunakan vite-plugin-singlefile:
+  - Pro: mudah distribusi (1 file HTML).
+  - Kontra: ukuran HTML besar, caching granular lebih sulit, first load bisa lebih berat.
+- PDF → image dataURL di AdminFlipbook:
+  - Konversi di client memakai canvas + jpeg quality 0.4, dibatasi max 10 halaman.
+  - Risiko: CPU spike saat render PDF, memory spike saat menghasilkan dataURL, dan cepat menghabiskan quota localStorage.
+- Penggunaan banyak gambar remote:
+  - Bergantung pada jaringan, berpotensi slow/blank jika CORS/ORB memblok.
+
+Rekomendasi performa:
+- Untuk produksi, pindahkan storage pages/cover ke object storage (S3/R2/GCS) atau backend, simpan hanya URL.
+- Hindari build singlefile untuk web publik skala besar; gunakan split assets untuk caching.
+
+
+11) Keamanan
+11.1 Autentikasi & Otorisasi
+- Login admin hardcoded (admin/admin123) di src/context.tsx dan bahkan ditampilkan di UI login.
+- Flag admin disimpan di localStorage (memoria_isAdmin), mudah dimanipulasi oleh user.
+- Kesimpulan: keamanan admin bersifat “kosmetik” (hanya UI gating), tidak boleh dipakai untuk data sensitif.
+
+11.2 Supply-chain vulnerabilities
+- npm audit (omit dev) melaporkan 1 kerentanan high pada xlsx:
+  - Prototype Pollution dan ReDoS (SheetJS)
+  - “No fix available” pada range dependensi ini.
+- Dampak: jika file Excel dari sumber tidak tepercaya diproses, ada risiko DoS / perilaku tak diinginkan.
+
+11.3 Data privacy
+- Semua data (termasuk data alumni) disimpan di browser pengguna (localStorage) tanpa enkripsi.
+- Tidak ada consent/retention policy.
+
+
+12) Identifikasi Potensi Bug / Area Perlu Ditingkatkan (Prioritas)
+P0 (kritikal untuk produksi)
+- Admin auth bisa dibypass dengan mengubah localStorage; perlu backend auth (token/session) + server-side authorization.
+- Penyimpanan blob: URL.createObjectURL disimpan ke localStorage (AdminFlipbook untuk gambar/audio). Blob URL tidak valid setelah reload → album/audio akan rusak setelah refresh.
+- Risiko localStorage quota: dataURL halaman PDF berukuran besar, tidak ada penanganan quota error.
+
+P1 (bug UX/fungsional)
+- Layout mobile bottom-nav:
+  - Item pertama berlabel “Koleksi” tetapi menuju path “/”.
+  - Item “Pengaturan” menuju “/login” (bukan settings publik/admin).
+- Login page menggunakan class Tailwind: min-h-[calc(100-64px)] (indikasi salah ketik; umumnya ingin 100vh).
+- Viewer: tombol next/prev memanggil flipBook.current.pageFlip() tanpa guard null; bisa error jika ref belum siap.
+- Viewer: status fullscreen tidak sinkron saat user keluar fullscreen via ESC (tidak ada listener fullscreenchange).
+
+P2 (quality/maintainability)
+- Duplikasi helper cn() di Layout.tsx dan AdminLayout.tsx padahal sudah ada src/utils/cn.ts.
+- Banyak state bertipe any (schoolInfo, yearbookSettings, selectedStudent) → menurunkan kualitas typing.
+- Data input admin (URL logo/foto/audio) tidak divalidasi; mudah memunculkan broken images atau mixed-content issues.
+
+
+13) Rekomendasi Roadmap Pengembangan
+- Fase 1 (stabilisasi & kualitas)
+  - Konsolidasikan helper cn ke src/utils/cn.ts.
+  - Tambah error handling localStorage (try/catch + fallback).
+  - Benahi bottom-nav mobile dan typo Tailwind di Login.
+  - Tambah guard untuk flipBook ref dan event handler fullscreenchange.
+- Fase 2 (backend & keamanan)
+  - Tambah backend API (mis. Node/Express/Nest atau serverless) untuk CRUD yearbook/alumni/teachers.
+  - Implement autentikasi admin yang benar (session/token) + role-based access.
+  - Storage file (cover/pages/audio) ke object storage; jangan simpan base64 di localStorage.
+- Fase 3 (testing)
+  - Tambahkan minimal: linting + typecheck + e2e smoke (Playwright/Cypress).
+  - Tambahkan test untuk parsing XLSX (dengan file fixture aman) atau ganti library lebih aman.
+
+
+Lampiran A — File Kunci untuk Mulai Kontribusi
+- src/App.tsx (routing)
+- src/context.tsx (state & persistence)
+- src/pages/* (fitur per halaman)
+- vite.config.ts dan src/index.css (build & styling)
+

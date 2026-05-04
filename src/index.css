@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark, .dark *));
+
+@theme {
+  --color-blue-600: var(--primary-color);
+  --color-blue-700: color-mix(in srgb, var(--primary-color), black 10%);
+  --color-blue-500: color-mix(in srgb, var(--primary-color), white 10%);
+}
+
+:root {
+  --primary-color: #2563eb;
+}
+
+html.theme-transition,
+html.theme-transition * {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+}
+
+.dark body {
+  @apply bg-slate-950 text-slate-50;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--primary-color), white 70%);
+}
+
+.dark ::selection {
+  background: color-mix(in srgb, var(--primary-color), black 40%);
+}
+
+/* Force dark mode background on entire html to prevent white flashes */
+html.dark {
+  color-scheme: dark;
+  background-color: #020617; /* slate-950 */
+}
+
+/* Scrollbar styles */
+.dark ::-webkit-scrollbar {
+  width: 10px;
+}
+.dark ::-webkit-scrollbar-track {
+  @apply bg-slate-900;
+}
+.dark ::-webkit-scrollbar-thumb {
+  @apply bg-slate-800 rounded-full border-2 border-slate-900 hover:bg-slate-700;
+}
