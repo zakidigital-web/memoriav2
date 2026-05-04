@@ -1,6 +1,6 @@
 {
   "installCommand": "npm install",
-  "buildCommand": "chmod -R +x node_modules/.bin && npm run build",
+  "buildCommand": "npx vite build",
   "outputDirectory": "dist",
   "functions": {
     "api/**/*.ts": {
