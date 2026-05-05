@@ -1,38 +1,38 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { withErrorHandling, json, methodNotAllowed } from "./_lib/http";
+import { withErrorHandling, json, methodNotAllowed } from "../src/api/_lib/http";
 
 // Import all endpoint handlers
-import bootstrapHandler from "./bootstrap";
-import healthHandler from "./health";
-import schoolHandler from "./school";
-import settingsHandler from "./settings";
+import bootstrapHandler from "../src/api/bootstrap";
+import healthHandler from "../src/api/health";
+import schoolHandler from "../src/api/school";
+import settingsHandler from "../src/api/settings";
 
-import alumniIndexHandler from "./alumni/index";
-import alumniIdHandler from "./alumni/[id]";
+import alumniIndexHandler from "../src/api/alumni/index";
+import alumniIdHandler from "../src/api/alumni/[id]";
 
-import analyticsDashboardHandler from "./analytics/dashboard";
+import analyticsDashboardHandler from "../src/api/analytics/dashboard";
 
-import authCompleteSetupHandler from "./auth/complete-setup";
-import authLoginHandler from "./auth/login";
-import authLogoutHandler from "./auth/logout";
-import authMeHandler from "./auth/me";
-import authSetupHandler from "./auth/setup";
+import authCompleteSetupHandler from "../src/api/auth/complete-setup";
+import authLoginHandler from "../src/api/auth/login";
+import authLogoutHandler from "../src/api/auth/logout";
+import authMeHandler from "../src/api/auth/me";
+import authSetupHandler from "../src/api/auth/setup";
 
-import blobUploadHandler from "./blob/upload";
+import blobUploadHandler from "../src/api/blob/upload";
 
-import systemDummyHandler from "./system/dummy";
-import systemExportHandler from "./system/export";
-import systemLogHandler from "./system/log";
-import systemResetHandler from "./system/reset";
+import systemDummyHandler from "../src/api/system/dummy";
+import systemExportHandler from "../src/api/system/export";
+import systemLogHandler from "../src/api/system/log";
+import systemResetHandler from "../src/api/system/reset";
 
-import teachersIndexHandler from "./teachers/index";
-import teachersIdHandler from "./teachers/[id]";
+import teachersIndexHandler from "../src/api/teachers/index";
+import teachersIdHandler from "../src/api/teachers/[id]";
 
-import userPreferencesHandler from "./user/preferences";
-import visitorTrackHandler from "./visitor/track";
+import userPreferencesHandler from "../src/api/user/preferences";
+import visitorTrackHandler from "../src/api/visitor/track";
 
-import yearbooksIndexHandler from "./yearbooks/index";
-import yearbooksIdHandler from "./yearbooks/[id]";
+import yearbooksIndexHandler from "../src/api/yearbooks/index";
+import yearbooksIdHandler from "../src/api/yearbooks/[id]";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Extract path without the '/api' prefix and query string

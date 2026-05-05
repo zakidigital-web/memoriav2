@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { getYearbookLimits, SettingsSchema, YearbookCreateSchema } from "../api/_lib/validation";
+import { describe, it, expect } from "vitest";
+import { getYearbookLimits, SettingsSchema, YearbookCreateSchema } from "../src/api/_lib/validation";
 
 describe("validation", () => {
   it("provides default yearbook limits", () => {
